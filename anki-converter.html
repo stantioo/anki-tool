@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232563EB'/><text x='16' y='23' text-anchor='middle' font-size='20' font-family='Arial' fill='white'>🃏</text></svg>" type="image/svg+xml">
+  <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Anki Konverter – PDF → .apkg</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -89,22 +90,9 @@ hr { border:none; border-top:1px solid var(--border); margin:18px 0; }
 
   <div class="header">
     <div class="eyebrow">Lernkarten-Generator</div>
-    <h1>PDF <span>→</span> Anki <button id="safari-link" onclick="var t=document.getElementById('safari-tip');t.style.display=t.style.display==='none'?'block':'none'" title="Im Browser öffnen" style="font-size:0.5em;vertical-align:middle;margin-left:10px;background:#EFF6FF;color:#2563EB;border:none;border-radius:6px;padding:4px 10px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">↗ Browser</button></h1>
-    <div id="safari-tip" style="display:none;background:#1C1917;color:#F5F5F4;border-radius:10px;padding:14px 16px;margin-top:10px;font-size:.8125rem;line-height:1.6">
-      <div style="font-weight:700;color:#FEF08A;margin-bottom:8px">iOS: Tool im Browser nutzen</div>
-      <div style="color:#D6D3D1;margin-bottom:10px">Die Files-App kann das Tool nicht ausführen. Zwei Optionen:</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div style="background:#ffffff12;border-radius:8px;padding:10px 12px">
-          <div style="color:white;font-weight:600;margin-bottom:4px">Option A – Mac Lesezeichen (empfohlen)</div>
-          <div style="color:#D6D3D1">Datei auf Mac in Safari öffnen → <strong style="color:white">⌘D</strong> → Lesezeichen wird via iCloud automatisch auf iPhone/iPad synchronisiert.</div>
-        </div>
-        <div style="background:#ffffff12;border-radius:8px;padding:10px 12px">
-          <div style="color:white;font-weight:600;margin-bottom:4px">Option B – Safari direkt</div>
-          <div style="color:#D6D3D1">Datei in <strong style="color:white">iCloud Drive</strong> speichern → Safari öffnen → in der Adressleiste nach dem Dateinamen suchen oder <strong style="color:white">Dateien</strong> antippen.</div>
-        </div>
-      </div>
-    </div>
-    <p>Altfragen-PDF hochladen – gelb markierte Antworten werden erkannt und als .apkg exportiert.</p>
+    <h1>PDF <span>→</span> Anki</h1>
+    
+    <p>PDF hochladen – gelb markierte Antworten werden erkannt und als .apkg exportiert.</p>
   </div>
 
   <div class="card" id="upload-section">
@@ -188,10 +176,7 @@ let SQL=null, apkgBlob=null, deckName='Altfragen';
 const LOG=[];
 function dbg(...a){ const m=a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' '); LOG.push(m); console.log('[AK]',m); }
 
-function toggleSafariTip(){
-  const tip=document.getElementById('safari-tip');
-  tip.style.display=tip.style.display==='none'?'block':'none';
-}
+
 
 /* ─── ui ─── */
 const $=id=>document.getElementById(id);
