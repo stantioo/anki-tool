@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Anki Konverter – PDF → .apkg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#F7F5F2; --surface:#FFFFFF; --border:#E8E4DF;
+  --text:#1C1917; --muted:#78716C;
+  --accent:#2563EB; --accent-h:#1D4ED8;
+  --yellow:#FEF08A; --radius:14px;
+}
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; padding:32px 16px 80px;
+}
+.container { max-width:660px; margin:0 auto; }
+.header { margin-bottom:32px; }
+.eyebrow { font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+h1 { font-family:'Syne',sans-serif; font-size:clamp(1.75rem,5vw,2.5rem); font-weight:800; line-height:1.1; letter-spacing:-.02em; margin-bottom:10px; }
+h1 span { color:var(--accent); }
+.header p { color:var(--muted); font-size:.9375rem; line-height:1.6; max-width:480px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.02); }
+.dropzone { border:2px dashed var(--border); border-radius:10px; padding:44px 24px; text-align:center; cursor:pointer; transition:border-color .18s,background .18s; position:relative; }
+.dropzone:hover,.dropzone.over { border-color:var(--accent); background:#EFF6FF; }
+.dropzone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.drop-icon { width:50px; height:50px; background:#EFF6FF; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+.drop-title { font-weight:600; font-size:1rem; margin-bottom:4px; }
+.drop-sub { color:var(--muted); font-size:.875rem; }
+.drop-types { display:inline-flex; gap:6px; margin-top:12px; }
+.badge { font-size:11px; font-weight:600; letter-spacing:.05em; padding:3px 8px; border-radius:4px; }
+.badge.blue { background:#DBEAFE; color:var(--accent); }
+.prog-header { display:flex; justify-content:space-between; margin-bottom:10px; }
+.prog-label { font-size:.875rem; font-weight:500; }
+.prog-pct { font-size:.875rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.prog-track { height:5px; background:var(--border); border-radius:99px; overflow:hidden; }
+.prog-bar { height:100%; background:var(--accent); border-radius:99px; transition:width .3s cubic-bezier(.4,0,.2,1); width:0%; }
+.steps { display:flex; flex-direction:column; gap:8px; margin-top:18px; }
+.step { display:flex; align-items:center; gap:10px; font-size:.8125rem; color:var(--muted); }
+.step.active { color:var(--text); font-weight:500; }
+.step.done { color:#059669; }
+.step-dot { width:8px; height:8px; border-radius:50%; background:var(--border); flex-shrink:0; }
+.step.active .step-dot { background:var(--accent); box-shadow:0 0 0 3px #DBEAFE; }
+.step.done .step-dot { background:#059669; }
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+.stat { background:var(--bg); border-radius:10px; padding:14px; text-align:center; }
+.stat-n { font-family:'Syne',sans-serif; font-size:1.875rem; font-weight:800; color:var(--accent); line-height:1; margin-bottom:4px; }
+.stat-l { font-size:.75rem; color:var(--muted); font-weight:500; }
+.warn { background:#FFFBEB; border:1px solid #FCD34D; border-radius:8px; padding:12px 14px; font-size:.8125rem; color:#92400E; margin-bottom:16px; display:flex; gap:8px; align-items:flex-start; line-height:1.5; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:13px 22px; border-radius:10px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:.9375rem; font-weight:600; transition:all .18s; -webkit-tap-highlight-color:transparent; }
+.btn-primary { background:var(--accent); color:white; width:100%; }
+.btn-primary:hover { background:var(--accent-h); }
+.btn-primary:active { transform:scale(.98); }
+.btn-ghost { background:none; border:1px solid var(--border); color:var(--muted); font-size:.875rem; padding:9px 16px; margin-top:14px; }
+.btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+details summary { font-size:.875rem; font-weight:600; cursor:pointer; padding-top:12px; color:var(--muted); user-select:none; list-style:none; display:flex; align-items:center; gap:6px; }
+details summary::-webkit-details-marker { display:none; }
+details summary::before { content:'›'; font-size:1.1em; transition:transform .2s; display:inline-block; }
+details[open] summary::before { transform:rotate(90deg); }
+details[open] summary { margin-bottom:12px; }
+.prev-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:8px; font-size:.8rem; }
+.prev-side { padding:10px 12px; }
+.prev-front { background:white; }
+.prev-back { background:var(--bg); border-top:1px solid var(--border); }
+.prev-lbl { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.prev-q { font-weight:600; margin-bottom:6px; line-height:1.45; }
+.prev-opt { padding:2px 5px; border-radius:3px; margin:2px 0; line-height:1.4; }
+.prev-opt.hl { background:var(--yellow); font-weight:500; }
+.sec-tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 6px; border-radius:3px; background:#EFF6FF; color:var(--accent); margin-bottom:6px; }
+.debug-box { background:#1C1917; color:#E7E5E4; border-radius:8px; font-size:.7rem; font-family:'SF Mono','Fira Code',monospace; line-height:1.5; overflow:auto; max-height:220px; padding:12px; margin-top:10px; white-space:pre-wrap; word-break:break-all; }
+hr { border:none; border-top:1px solid var(--border); margin:18px 0; }
+.how-list { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+.how-item { display:flex; gap:10px; align-items:flex-start; font-size:.875rem; color:var(--muted); line-height:1.5; }
+.how-n { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--accent); color:white; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+.hidden { display:none !important; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+.pulsing { animation:pulse 1.4s ease-in-out infinite; }
+@media(max-width:480px){ .card{padding:18px;} .dropzone{padding:36px 16px;} .stat-n{font-size:1.5rem;} }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="eyebrow">Lernkarten-Generator</div>
+    <h1>PDF <span>→</span> Anki <button id="safari-link" onclick="var t=document.getElementById('safari-tip');t.style.display=t.style.display==='none'?'block':'none'" title="Im Browser öffnen" style="font-size:0.5em;vertical-align:middle;margin-left:10px;background:#EFF6FF;color:#2563EB;border:none;border-radius:6px;padding:4px 10px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">↗ Browser</button></h1>
+    <div id="safari-tip" style="display:none;background:#1C1917;color:#F5F5F4;border-radius:10px;padding:14px 16px;margin-top:10px;font-size:.8125rem;line-height:1.6">
+      <div style="font-weight:700;color:#FEF08A;margin-bottom:8px">iOS: Tool im Browser nutzen</div>
+      <div style="color:#D6D3D1;margin-bottom:10px">Die Files-App kann das Tool nicht ausführen. Zwei Optionen:</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:#ffffff12;border-radius:8px;padding:10px 12px">
+          <div style="color:white;font-weight:600;margin-bottom:4px">Option A – Mac Lesezeichen (empfohlen)</div>
+          <div style="color:#D6D3D1">Datei auf Mac in Safari öffnen → <strong style="color:white">⌘D</strong> → Lesezeichen wird via iCloud automatisch auf iPhone/iPad synchronisiert.</div>
+        </div>
+        <div style="background:#ffffff12;border-radius:8px;padding:10px 12px">
+          <div style="color:white;font-weight:600;margin-bottom:4px">Option B – Safari direkt</div>
+          <div style="color:#D6D3D1">Datei in <strong style="color:white">iCloud Drive</strong> speichern → Safari öffnen → in der Adressleiste nach dem Dateinamen suchen oder <strong style="color:white">Dateien</strong> antippen.</div>
+        </div>
+      </div>
+    </div>
+    <p>Altfragen-PDF hochladen – gelb markierte Antworten werden erkannt und als .apkg exportiert.</p>
+  </div>
+
+  <div class="card" id="upload-section">
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept=".pdf,.docx">
+      <div class="drop-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="drop-title">Datei auswählen oder ablegen</div>
+      <div class="drop-sub">PDF oder DOCX mit gelb markierten Antworten</div>
+      <div class="drop-types"><span class="badge blue">PDF</span><span class="badge blue">DOCX</span></div>
+    </div>
+    <hr>
+    <div class="how-list">
+      <div class="how-item"><div class="how-n">1</div><div><strong style="color:var(--text)">PDF hochladen</strong> – mit gelb markierten richtigen Antworten.</div></div>
+      <div class="how-item"><div class="how-n">2</div><div><strong style="color:var(--text)">Automatische Erkennung</strong> – Fragen, Optionen und Markierungen werden geparst.</div></div>
+      <div class="how-item"><div class="how-n">3</div><div><strong style="color:var(--text)">.apkg herunterladen</strong> – direkt in Anki importieren, mit Subdecks nach Fachgebiet.</div></div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="progress-section">
+    <div class="prog-header">
+      <span class="prog-label" id="prog-text">Starte…</span>
+      <span class="prog-pct" id="prog-pct">0%</span>
+    </div>
+    <div class="prog-track"><div class="prog-bar" id="prog-bar"></div></div>
+    <div class="steps">
+      <div class="step" id="s1"><div class="step-dot"></div>Bibliotheken laden</div>
+      <div class="step" id="s2"><div class="step-dot"></div>Datei einlesen</div>
+      <div class="step" id="s3"><div class="step-dot"></div>Text extrahieren &amp; Seiten rendern</div>
+      <div class="step" id="s4"><div class="step-dot"></div>Fragen parsen</div>
+      <div class="step" id="s5"><div class="step-dot"></div>Anki-Paket erstellen</div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="error-section">
+    <div style="color:#DC2626;font-weight:700;margin-bottom:6px">Fehler beim Verarbeiten</div>
+    <div id="error-text" style="font-size:.875rem;color:var(--muted);line-height:1.6"></div>
+    <details style="margin-top:12px">
+      <summary>Debug-Log anzeigen</summary>
+      <div class="debug-box" id="debug-log"></div>
+    </details>
+    <button class="btn btn-ghost" onclick="resetTool()">Nochmal versuchen</button>
+  </div>
+
+  <div class="card hidden" id="result-section">
+    <div id="warn-no-hl" class="warn hidden">
+      <span>⚠️</span>
+      <div>Keine gelben Markierungen gefunden. Karten wurden ohne vormarkierte Antworten erstellt. Falls die PDF Highlights enthält: in Adobe Reader / Preview öffnen, Highlights neu setzen und neu hochladen.</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-n" id="stat-q">–</div><div class="stat-l">Fragen</div></div>
+      <div class="stat"><div class="stat-n" id="stat-hl">–</div><div class="stat-l">mit Lösung</div></div>
+      <div class="stat"><div class="stat-n" id="stat-sec">–</div><div class="stat-l">Fachgebiete</div></div>
+    </div>
+    <button class="btn btn-primary" id="download-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      .apkg herunterladen
+    </button>
+    <details>
+      <summary>Vorschau erste 5 Karten</summary>
+      <div id="preview-list"></div>
+    </details>
+    <details id="missing-section" style="margin-top:2px">
+      <summary id="missing-summary">Fragen ohne erkannte Lösung</summary>
+      <div id="missing-list" style="margin-top:4px"></div>
+    </details>
+    <button class="btn btn-ghost" onclick="resetTool()">Neue Datei</button>
+  </div>
+</div>
+
+<script>
+/* ─── globals ─── */
+let SQL=null, apkgBlob=null, deckName='Altfragen';
+const LOG=[];
+function dbg(...a){ const m=a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' '); LOG.push(m); console.log('[AK]',m); }
+
+function toggleSafariTip(){
+  const tip=document.getElementById('safari-tip');
+  tip.style.display=tip.style.display==='none'?'block':'none';
+}
+
+/* ─── ui ─── */
+const $=id=>document.getElementById(id);
+const show=id=>$(id).classList.remove('hidden');
+const hide=id=>$(id).classList.add('hidden');
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setStep(n,state){
+  for(let i=1;i<=5;i++){const e=$('s'+i);e.classList.remove('active','done','pulsing');}
+  for(let i=1;i<n;i++) $('s'+i).classList.add('done');
+  if(n>=1){ const e=$('s'+n); e.classList.add(state==='active'?'active':'done'); if(state==='active') e.classList.add('pulsing'); }
+}
+function setP(pct,txt){ $('prog-bar').style.width=pct+'%'; $('prog-text').textContent=txt; $('prog-pct').textContent=pct+'%'; }
+function resetTool(){ show('upload-section'); hide('progress-section'); hide('error-section'); hide('result-section'); apkgBlob=null; $('file-input').value=''; LOG.length=0; }
+function showErr(msg){ hide('progress-section'); $('error-text').textContent=msg; $('debug-log').textContent=LOG.join('\n'); show('error-section'); }
+
+/* ─── libs ─── */
+function loadScript(src){ return new Promise((res,rej)=>{ if(document.querySelector(`script[src="${src}"]`)){res();return;} const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('Failed: '+src)); document.head.appendChild(s); }); }
+async function loadLibs(){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js');
+  SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+}
+
+/* ─── pdf extraction ─── */
+function isYellowAnnot(c){ if(!c) return false; return c.r>0.5&&c.g>0.5&&c.b<0.5&&(c.r+c.g)>(c.b*3); }
+function overlaps(tx,ty,tw,th,rx0,ry0,rx1,ry1){ const p=3; return tx<rx1+p&&tx+tw>rx0-p&&ty<ry1+p&&ty+th>ry0-p; }
+
+/* Canvas pixel sampling – detects yellow regardless of how it was stored in the PDF.
+   Works for: annotation highlights, Word-export background colors, drawn rectangles, etc.
+   Samples a small cluster of pixels at the vertical midpoint of each text item. */
+function isYellowPixel(r,g,b){
+  // Yellow: high red, high green, low blue. Allow for slight rendering artifacts.
+  return r>180 && g>180 && b<120 && (r+g) > (b*3.5);
+}
+
+async function samplePageHighlights(page, textItems, scale){
+  const viewport = page.getViewport({scale});
+  const canvas   = document.createElement('canvas');
+  canvas.width   = Math.floor(viewport.width);
+  canvas.height  = Math.floor(viewport.height);
+  const ctx = canvas.getContext('2d');
+  // Render at white background so uncoloured text areas are white
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  await page.render({canvasContext:ctx, viewport}).promise;
+  const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const px = imgData.data; // RGBA flat array
+  const W  = canvas.width, H = canvas.height;
+
+  function samplePixel(cx,cy){
+    const ix = Math.max(0,Math.min(W-1,Math.round(cx)));
+    const iy = Math.max(0,Math.min(H-1,Math.round(cy)));
+    const off=(iy*W+ix)*4;
+    return isYellowPixel(px[off],px[off+1],px[off+2]);
+  }
+
+  return textItems.map(it=>{
+    const x=it.transform[4], y=it.transform[5];
+    const w=it.width||(it.str.length*6), h=Math.abs(it.transform[3])||12;
+    // Convert PDF coords → canvas coords (Y-axis flipped)
+    const cx0 = x * scale;
+    const cx1 = (x + w) * scale;
+    // Sample slightly above baseline (background sits above baseline)
+    const cyMid = H - (y + h * 0.6) * scale;
+    // Sample 5 points across the text width + center
+    const xs = [cx0+2, cx0+(cx1-cx0)*0.25, cx0+(cx1-cx0)*0.5, cx0+(cx1-cx0)*0.75, cx1-2];
+    const hl = xs.some(cx=>samplePixel(cx,cyMid));
+    return hl;
+  });
+}
+
+async function extractPDF(ab){
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  dbg('numPages:',pdf.numPages);
+  const RENDER_SCALE=1.5; // balance quality vs. memory
+  const pages=[];
+
+  for(let pn=1;pn<=pdf.numPages;pn++){
+    const page=await pdf.getPage(pn);
+    const [tc,anns]=await Promise.all([page.getTextContent(),page.getAnnotations()]);
+
+    // ── Method 1: annotation-based highlights ──
+    const hlRects=[];
+    for(const a of anns){
+      if(a.subtype!=='Highlight') continue;
+      if(!isYellowAnnot(a.color)) continue;
+      if(a.quadPoints&&a.quadPoints.length>=8){
+        for(let i=0;i<a.quadPoints.length;i+=8){
+          const xs=[a.quadPoints[i],a.quadPoints[i+2],a.quadPoints[i+4],a.quadPoints[i+6]];
+          const ys=[a.quadPoints[i+1],a.quadPoints[i+3],a.quadPoints[i+5],a.quadPoints[i+7]];
+          hlRects.push([Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]);
+        }
+      } else if(a.rect) hlRects.push(a.rect);
+    }
+
+    const rawItems=tc.items.filter(it=>it.str&&it.str.length>0);
+
+    // ── Method 2: canvas pixel sampling ──
+    let pixelHL=null;
+    try {
+      pixelHL=await samplePageHighlights(page, rawItems, RENDER_SCALE);
+    } catch(e){ dbg('canvas sample failed p'+pn+':',e.message); }
+
+    // ── Combine: item is highlighted if EITHER method detects it ──
+    const items=rawItems.map((it,idx)=>{
+      const x=it.transform[4],y=it.transform[5],w=it.width||(it.str.length*6),h=Math.abs(it.transform[3])||12;
+      const hlAnnot=hlRects.length>0&&hlRects.some(r=>overlaps(x,y,w,h,r[0],r[1],r[2],r[3]));
+      const hlPixel=pixelHL?pixelHL[idx]:false;
+      return {str:it.str,x,y,w,h,hl:hlAnnot||hlPixel};
+    });
+
+    const hlCount=hlRects.length+(pixelHL?pixelHL.filter(Boolean).length:0);
+    dbg('p'+pn,'items:',items.length,'annot-rects:',hlRects.length,'pixel-hl:',pixelHL?pixelHL.filter(Boolean).length:'n/a');
+    pages.push({items,hlCount});
+  }
+  return pages;
+}
+
+async function extractDOCX(ab){
+  // Parse OOXML directly – no mammoth dependency, handles all highlight types reliably.
+  const zip = new JSZip();
+  await zip.loadAsync(ab);
+
+  const xmlStr = await zip.file('word/document.xml').async('string');
+  dbg('docx xml length:', xmlStr.length);
+
+  const xmlDoc = new DOMParser().parseFromString(xmlStr, 'application/xml');
+  const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+  // Helper: get attribute with or without namespace prefix
+  function wAttr(el, name){
+    return el.getAttributeNS(W, name) || el.getAttribute('w:'+name) || el.getAttribute(name) || '';
+  }
+
+  // Is this run highlighted yellow?
+  function runIsYellow(run){
+    const rPr = run.getElementsByTagNameNS(W,'rPr')[0];
+    if(!rPr) return false;
+
+    // <w:highlight w:val="yellow"> – standard Word highlight
+    const hl = rPr.getElementsByTagNameNS(W,'highlight')[0];
+    if(hl){
+      const val = wAttr(hl,'val').toLowerCase();
+      if(val && val !== 'none') return true; // any highlight colour counts
+    }
+
+    // <w:shd w:fill="FFFF00"> – background shading (Word/LibreOffice background colour)
+    const shd = rPr.getElementsByTagNameNS(W,'shd')[0];
+    if(shd){
+      const fill = wAttr(shd,'fill').toUpperCase().replace('#','');
+      if(fill && fill !== 'AUTO' && fill !== 'FFFFFF' && fill !== '000000'){
+        // Check if it's yellowish: parse as hex RGB
+        if(fill.length === 6){
+          const r=parseInt(fill.slice(0,2),16),g=parseInt(fill.slice(2,4),16),b=parseInt(fill.slice(4,6),16);
+          if(isYellowPixel(r,g,b)) return true;
+        }
+      }
+    }
+
+    // <w:rStyle> named style – some templates use a named "Hervorhebung" / "highlight" style
+    const rStyle = rPr.getElementsByTagNameNS(W,'rStyle')[0];
+    if(rStyle){
+      const val = wAttr(rStyle,'val').toLowerCase();
+      if(val.includes('herv') || val.includes('highlight') || val.includes('mark')) return true;
+    }
+
+    return false;
+  }
+
+  const paragraphs = xmlDoc.getElementsByTagNameNS(W,'p');
+  let y=1e6; const items=[];
+  let hlFound=0;
+  const Y_STEP=100; // must be > Y_TOL (8) so each paragraph stays its own line
+
+  for(const para of paragraphs){
+    let text='', paraHl=false;
+    const runs = para.getElementsByTagNameNS(W,'r');
+    for(const run of runs){
+      const tEls = run.getElementsByTagNameNS(W,'t');
+      for(const t of tEls) text += t.textContent;
+      if(runIsYellow(run)) paraHl=true;
+    }
+    // Also grab text from <w:hyperlink> runs inside this paragraph
+    const hlinks = para.getElementsByTagNameNS(W,'hyperlink');
+    for(const hl of hlinks){
+      const hrs = hl.getElementsByTagNameNS(W,'r');
+      for(const run of hrs){
+        const tEls = run.getElementsByTagNameNS(W,'t');
+        for(const t of tEls) text += t.textContent;
+        if(runIsYellow(run)) paraHl=true;
+      }
+    }
+    text = text.trim();
+    if(!text) continue;
+    if(paraHl) hlFound++;
+    items.push({str:text,x:0,y:y,w:text.length*7,h:14,hl:paraHl});
+    y -= Y_STEP;
+  }
+
+  dbg('docx paragraphs:', items.length, 'highlighted:', hlFound);
+  if(items.length>0) dbg('first 5 lines:', items.slice(0,5).map(i=>i.str.substring(0,50)+'|hl='+i.hl).join(' // '));
+  return [{items, hlCount:hlFound}];
+}
+
+/* ─── line grouping ─── */
+function buildLines(pages){
+  const lines=[];
+  for(const page of pages){
+    const sorted=[...page.items].sort((a,b)=>b.y-a.y||a.x-b.x);
+    const Y_TOL=8;
+    let groups=[],cur=null;
+    for(const it of sorted){
+      if(!cur||Math.abs(it.y-cur.baseY)>Y_TOL){ cur={baseY:it.y,parts:[]}; groups.push(cur); }
+      cur.parts.push({x:it.x,str:it.str,hl:it.hl});
+    }
+    for(const g of groups){
+      g.parts.sort((a,b)=>a.x-b.x);
+      let txt='',hl=false;
+      for(const p of g.parts){
+        if(txt&&!txt.endsWith(' ')&&!txt.endsWith('-')&&!p.str.startsWith(' ')) txt+=' ';
+        txt+=p.str; if(p.hl) hl=true;
+      }
+      txt=txt.trim(); if(txt) lines.push({text:txt,hl});
+    }
+  }
+  return lines;
+}
+
+/* ─── parser ─── */
+const SMAP={'Chirurgie':'Chirurgie','Proktologie':'Proktologie','Osteoporose':'Osteoporose','Rheuma':'Rheuma','Blut':'Blut & Hormone','Hormone':'Blut & Hormone','Kardiologie':'Kardiologie & Pulmologie','Pulmologie':'Kardiologie & Pulmologie','Gynäkologie':'Gynäkologie & Geburt','Geburt':'Gynäkologie & Geburt','Urologie':'Urologie','Gastroenterologie':'Gastroenterologie'};
+const RE_SEC=/^(Chirurgie|Proktologie|Osteoporose|Rheuma|Blut|Hormone|Kardiologie|Pulmologie|Gyn.kologie|Geburt|Urologie|Gastroenterologie)\b/;
+const RE_Q=/^(\d{1,2})[.)]\s*(.{3,})/;
+const RE_O=/^([a-eA-E])[.)]\s*(.+)/;
+
+function parseLines(lines){
+  const qs=[]; let sec='Allgemein',curQ=null,curO=null;
+  for(const line of lines){
+    const t=line.text.replace(/\s+/g,' ').trim(); if(!t||t.length<2) continue;
+    const sm=t.match(RE_SEC);
+    if(sm&&t.length<sm[1].length+40&&!RE_Q.test(t)&&!RE_O.test(t)){
+      sec=SMAP[sm[1]]||sm[1]; dbg('sec:',sec); continue;
+    }
+    const qm=t.match(RE_Q);
+    if(qm){ if(curQ&&curQ.opts.length>0) qs.push(curQ); curQ={num:parseInt(qm[1]),text:qm[2].trim(),sec,opts:[]}; curO=null; continue; }
+    if(!curQ) continue;
+    const om=t.match(RE_O);
+    if(om){ curO={l:om[1].toLowerCase(),text:om[2].trim(),ok:line.hl}; curQ.opts.push(curO); continue; }
+    if(curO){ curO.text=(curO.text+' '+t).trim(); if(line.hl) curO.ok=true; }
+    else if(curQ) curQ.text=(curQ.text+' '+t).trim();
+  }
+  if(curQ&&curQ.opts.length>0) qs.push(curQ);
+  dbg('questions:',qs.length);
+  return qs;
+}
+
+/* ─── card html ─── */
+const ACSS=`.card{font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1c1917;padding:12px;max-width:560px;margin:0 auto}.q{font-weight:700;margin-bottom:14px}.opts{display:flex;flex-direction:column;gap:5px}.opt{padding:5px 9px;border-radius:5px}mark{background:#fef08a;border-radius:3px;padding:0 2px}`;
+// Front: question + all options (no highlighting)
+function front(q){ return `<div class="q">${escH(q.num+'. '+q.text)}</div><div class="opts">${q.opts.map(o=>`<div class="opt"><b>${escH(o.l)}.</b> ${escH(o.text)}</div>`).join('')}</div>`; }
+// Back: only options, correct ones wrapped in <mark> (Anki's native highlight)
+function back(q){ return `<div class="opts">${q.opts.map(o=>o.ok?`<div class="opt"><b>${escH(o.l)}.</b> <mark>${escH(o.text)}</mark></div>`:`<div class="opt"><b>${escH(o.l)}.</b> ${escH(o.text)}</div>`).join('')}</div>`; }
+
+/* ─── anki builder ─── */
+function sh(s){let h=0;for(let i=0;i<s.length;i++)h=(Math.imul(31,h)+s.charCodeAt(i))|0;return Math.abs(h);}
+function gd(n){const c='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';let s='',v=Math.abs(n)+1;while(s.length<10){s+=c[v%c.length];v=Math.floor(v/c.length)||(s.length+1)*37;}return s;}
+
+async function buildAPKG(qs,rn){
+  const db=new SQL.Database(),now=Math.floor(Date.now()/1000),B=1000000000+Math.floor(Math.random()*8e8);
+  db.exec(`CREATE TABLE col(id INT PRIMARY KEY,crt INT,mod INT,scm INT,ver INT,dty INT,usn INT,ls INT,conf TEXT,models TEXT,decks TEXT,dconf TEXT,tags TEXT);
+CREATE TABLE notes(id INT PRIMARY KEY,guid TEXT,mid INT,mod INT,usn INT,tags TEXT,flds TEXT,sfld TEXT,csum INT,flags INT,data TEXT);
+CREATE TABLE cards(id INT PRIMARY KEY,nid INT,did INT,ord INT,mod INT,usn INT,type INT,queue INT,due INT,ivl INT,factor INT,reps INT,lapses INT,left INT,odue INT,odid INT,flags INT,data TEXT);
+CREATE TABLE revlog(id INT PRIMARY KEY,cid INT,usn INT,ease INT,ivl INT,lastIvl INT,factor INT,time INT,type INT);
+CREATE TABLE graves(usn INT,oid INT,type INT);
+CREATE INDEX ix_notes_usn ON notes(usn);CREATE INDEX ix_cards_nid ON cards(nid);CREATE INDEX ix_cards_sched ON cards(did,queue,due);`);
+  // Sections in document order (first appearance), numbered 01, 02, …
+  const secs=[...new Set(qs.map(q=>q.sec))];
+  const dm={};
+  const decks={"1":{id:1,name:'Default',conf:1,extendNew:10,extendRev:50,collapsed:false,newToday:[0,0],timeToday:[0,0],lrnToday:[0,0],revToday:[0,0],reviewedToday:0,usn:0,desc:'',dyn:0,mod:now}};
+  decks[B]={id:B,name:rn,conf:1,extendNew:10,extendRev:50,collapsed:false,newToday:[0,0],timeToday:[0,0],lrnToday:[0,0],revToday:[0,0],reviewedToday:0,usn:-1,desc:'',dyn:0,mod:now};
+  secs.forEach((s,i)=>{
+    const did=B+i+1;
+    dm[s]=did;
+    const prefix=String(i+1).padStart(2,'0');       // "01", "02", …
+    const dname=rn+'::'+prefix+' '+s;               // e.g. "Altfragen::01 Chirurgie"
+    decks[did]={id:did,name:dname,conf:1,extendNew:10,extendRev:50,collapsed:false,newToday:[0,0],timeToday:[0,0],lrnToday:[0,0],revToday:[0,0],reviewedToday:0,usn:-1,desc:'',dyn:0,mod:now};
+  });
+  const mid=B+5000;
+  const models={};
+  models[mid]={id:mid,name:'OSKL',type:0,mod:now,usn:-1,sortf:2,did:B,
+    tmpls:[{name:'Karte 1',ord:0,qfmt:'{{Frage}}',afmt:'{{Antwort}}',bqfmt:'',bafmt:'',did:null,bfont:'',bsize:0}],
+    flds:[
+      {name:'Frage',    ord:0,sticky:false,rtl:false,font:'Arial',size:15,media:[]},
+      {name:'Antwort',  ord:1,sticky:false,rtl:false,font:'Arial',size:15,media:[]},
+      {name:'Sortierung',ord:2,sticky:false,rtl:false,font:'Arial',size:11,media:[]}  // hidden sort key
+    ],
+    css:ACSS,latexPre:'\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n',latexPost:'\\end{document}',tags:[],vers:[]};
+  const conf={activeDecks:[B],curDeck:B,newSpread:0,collapseTime:1200,timeLim:0,estTimes:true,dueCounts:true,curModel:String(mid),nextPos:1,sortType:'noteFld',sortBackwards:false,addToCur:true};
+  const dconf={"1":{id:1,name:'Default',replayq:true,lapse:{leechFails:8,minInt:1,delays:[10],leechAction:0,mult:0},rev:{perDay:200,fuzz:.05,ivlFct:1,maxIvl:36500,ease4:1.3,bury:false,minSpace:1},timer:0,maxTaken:60,usn:0,new:{perDay:20,delays:[1,10],separate:true,ints:[1,4,7],initialFactor:2500,bury:false,order:1},mod:0,autoplay:true}};
+  db.run('INSERT INTO col VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',[1,now,now,now*1000,11,0,-1,0,JSON.stringify(conf),JSON.stringify(models),JSON.stringify(decks),JSON.stringify(dconf),'{}']);
+  const ns=db.prepare('INSERT INTO notes VALUES(?,?,?,?,?,?,?,?,?,?,?)');
+  const cs=db.prepare('INSERT INTO cards VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+  const ts=Date.now();
+  // Build a global index per section so sort order is always correct
+  // sfld format: "01-004" → section 01, question 004 → lexicographic sort = correct order
+  const secIndex={};
+  secs.forEach((s,i)=>secIndex[s]=i+1);
+  const perSecCounter={};
+
+  qs.forEach((q,globalIdx)=>{
+    const nid=ts+globalIdx*3, cid=ts+globalIdx*3+1;
+    const si=secIndex[q.sec]||1;
+    perSecCounter[q.sec]=(perSecCounter[q.sec]||0)+1;
+    const localPos=perSecCounter[q.sec];
+    const sortKey=String(si).padStart(2,'0')+'-'+String(localPos).padStart(3,'0');
+    const sfld=sortKey;
+    const flds=front(q)+'\x1f'+back(q)+'\x1f'+sortKey;
+    const did=dm[q.sec]||B;
+    ns.run([nid,gd(nid),mid,now,-1,' ',flds,sfld,sh(sfld),0,'']);
+    // due starts at 10001 → "Neu #10001", "Neu #10002"… sorts correctly as string AND integer
+    cs.run([cid,nid,did,0,now,-1,0,0,10000+globalIdx+1,0,0,0,0,0,0,0,0,'']);
+  });
+  ns.free();cs.free();
+  const bytes=db.export();db.close();
+  const zip=new JSZip();zip.file('collection.anki2',bytes);zip.file('media','{}');
+  return zip.generateAsync({type:'blob',compression:'DEFLATE'});
+}
+
+/* ─── preview ─── */
+function renderPreview(qs){
+  $('preview-list').innerHTML=qs.slice(0,5).map(q=>`<div class="prev-card">
+    <div class="prev-side prev-front">
+      <div class="prev-lbl">Vorderseite</div>
+      <div class="sec-tag">${escH(q.sec)}</div>
+      <div class="prev-q">${escH(q.num+'. '+q.text)}</div>
+      ${q.opts.map(o=>`<div class="prev-opt">${o.l}. ${escH(o.text)}</div>`).join('')}
+    </div>
+    <div class="prev-side prev-back">
+      <div class="prev-lbl">Rückseite – nur Antworten, korrekte gelb</div>
+      ${q.opts.map(o=>o.ok
+        ?`<div class="prev-opt hl"><b>${o.l}.</b> ${escH(o.text)}</div>`
+        :`<div class="prev-opt"><b>${o.l}.</b> ${escH(o.text)}</div>`
+      ).join('')}
+    </div>
+  </div>`).join('');
+}
+
+/* ─── missing solutions ─── */
+function renderMissing(qs){
+  const missing=qs.filter(q=>!q.opts.some(o=>o.ok));
+  const sec=$('missing-section');
+  $('missing-summary').textContent=`Fragen ohne erkannte Lösung (${missing.length})`;
+  if(missing.length===0){
+    sec.style.opacity='0.45';
+    $('missing-list').innerHTML='<p style="font-size:.8125rem;color:var(--muted);padding:6px 0">Alle Fragen haben mindestens eine markierte Antwort. 🎉</p>';
+    return;
+  }
+  sec.style.opacity='1';
+  $('missing-list').innerHTML=missing.map(q=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:.8rem;background:white">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="sec-tag">${escH(q.sec)}</span>
+        <span style="font-size:10px;color:var(--muted);font-weight:600">Frage ${q.num}</span>
+      </div>
+      <div style="font-weight:600;margin-bottom:6px;line-height:1.45;color:var(--text)">${escH(q.text)}</div>
+      ${q.opts.map(o=>`<div class="prev-opt" style="color:var(--muted)">${o.l}. ${escH(o.text)}</div>`).join('')}
+    </div>`).join('');
+}
+
+/* ─── main ─── */
+async function processFile(file){
+  apkgBlob=null;LOG.length=0;deckName=file.name.replace(/\.(pdf|docx)$/i,'');
+  hide('upload-section');hide('error-section');hide('result-section');show('progress-section');
+  try{
+    setStep(1,'active');setP(5,'Lade Bibliotheken…');
+    await loadLibs();dbg('libs ok');setStep(1,'done');
+
+    setStep(2,'active');setP(18,'Lese Datei…');
+    const ab=await file.arrayBuffer();dbg('bytes:',ab.byteLength);setStep(2,'done');
+
+    setStep(3,'active');setP(32,'Extrahiere Text und Highlights…');
+    const isPDF=file.name.toLowerCase().endsWith('.pdf');
+    const pages=isPDF?await extractPDF(ab):await extractDOCX(ab);
+    const totalHL=pages.reduce((s,p)=>s+p.hlCount,0);
+    dbg('totalHL:',totalHL);setStep(3,'done');
+
+    setStep(4,'active');setP(55,'Analysiere Fragen…');
+    const lines=buildLines(pages);
+    dbg('lines:',lines.length);
+    if(lines.length>0) dbg('line0:',lines[0].text.substring(0,80));
+    if(lines.length>3) dbg('line3:',lines[3].text.substring(0,80));
+    if(lines.length>8) dbg('line8:',lines[8].text.substring(0,80));
+
+    const qs=parseLines(lines);
+    if(qs.length===0){
+      lines.slice(0,40).forEach((l,i)=>dbg(`L${i}:"${l.text.substring(0,70)}" hl=${l.hl}`));
+      throw new Error(`Keine Fragen erkannt (${lines.length} Zeilen gefunden). Bitte Debug-Log öffnen um zu sehen welcher Text erkannt wurde.`);
+    }
+    const hlCount=qs.filter(q=>q.opts.some(o=>o.ok)).length;
+    const secs=[...new Set(qs.map(q=>q.sec))];
+    setStep(4,'done');
+
+    setStep(5,'active');setP(72,'Erstelle Anki-Paket…');
+    apkgBlob=await buildAPKG(qs,deckName);
+    setStep(5,'done');setP(100,'Fertig!');
+
+    setTimeout(()=>{
+      hide('progress-section');
+      $('stat-q').textContent=qs.length;
+      $('stat-hl').textContent=hlCount;
+      $('stat-sec').textContent=secs.length;
+      if(hlCount===0)show('warn-no-hl');else hide('warn-no-hl');
+      renderPreview(qs);
+      renderMissing(qs);
+      show('result-section');
+    },350);
+  }catch(err){dbg('ERR:',err.message);showErr(err.message||String(err));}
+}
+
+/* ─── events ─── */
+$('download-btn').addEventListener('click',()=>{
+  if(!apkgBlob)return;
+  const url=URL.createObjectURL(apkgBlob),a=document.createElement('a');
+  a.href=url;a.download=deckName+'.apkg';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+});
+const dz=$('dropzone'),fi=$('file-input');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer.files[0];if(f)processFile(f);});
+fi.addEventListener('change',e=>{const f=e.target.files[0];if(f)processFile(f);});
+</script>
+</body>
+</html>
