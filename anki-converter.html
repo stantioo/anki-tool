@@ -373,12 +373,80 @@ async function extractDOCX(ab){
     return false;
   }
 
+  // Word auto-numbering ("1.", "a)") is not part of the paragraph text –
+  // rebuild the labels from numbering.xml so questions/options are recognised.
+  function wChild(el, name){
+    if(!el) return null;
+    for(const c of el.children) if(c.localName===name && c.namespaceURI===W) return c;
+    return null;
+  }
+  const absNums={}, nums={};
+  const numFile = zip.file('word/numbering.xml');
+  if(numFile){
+    const numDoc = new DOMParser().parseFromString(await numFile.async('string'), 'application/xml');
+    for(const an of numDoc.getElementsByTagNameNS(W,'abstractNum')){
+      const lvls={};
+      for(const lvl of an.getElementsByTagNameNS(W,'lvl')){
+        const v = n => { const e=wChild(lvl,n); return e ? wAttr(e,'val') : ''; };
+        const start = parseInt(v('start'));
+        lvls[wAttr(lvl,'ilvl')] = {start:isNaN(start)?1:start, fmt:v('numFmt')||'decimal', text:v('lvlText')};
+      }
+      absNums[wAttr(an,'abstractNumId')] = lvls;
+    }
+    for(const n of numDoc.getElementsByTagNameNS(W,'num')){
+      const absEl = wChild(n,'abstractNumId');
+      const starts={};
+      for(const ov of n.getElementsByTagNameNS(W,'lvlOverride')){
+        const so = wChild(ov,'startOverride');
+        if(so) starts[wAttr(ov,'ilvl')] = parseInt(wAttr(so,'val'))||1;
+      }
+      nums[wAttr(n,'numId')] = {abs: absEl ? wAttr(absEl,'val') : '', starts};
+    }
+  }
+  function fmtNum(n, fmt){
+    if(fmt==='lowerLetter'||fmt==='upperLetter'){
+      const s = String.fromCharCode(97+(n-1)%26).repeat(Math.floor((n-1)/26)+1);
+      return fmt==='upperLetter' ? s.toUpperCase() : s;
+    }
+    if(fmt==='lowerRoman'||fmt==='upperRoman'){
+      const R=[[1000,'m'],[900,'cm'],[500,'d'],[400,'cd'],[100,'c'],[90,'xc'],[50,'l'],[40,'xl'],[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']];
+      let s='', r=n; for(const [val,sym] of R) while(r>=val){ s+=sym; r-=val; }
+      return fmt==='upperRoman' ? s.toUpperCase() : s;
+    }
+    return String(n);
+  }
+  // Counters are shared by all lists using the same abstractNum (like Word does),
+  // a startOverride restarts them.
+  const counters={}, seenNums=new Set();
+  function numLabel(para){
+    const numPr = wChild(wChild(para,'pPr'),'numPr');
+    if(!numPr) return '';
+    const idEl = wChild(numPr,'numId'), lvlEl = wChild(numPr,'ilvl');
+    const numId = idEl ? wAttr(idEl,'val') : '';
+    const ilvl = lvlEl ? parseInt(wAttr(lvlEl,'val'))||0 : 0;
+    const num = nums[numId], lvls = num && absNums[num.abs];
+    if(!lvls || !lvls[ilvl] || lvls[ilvl].fmt==='none') return '';
+    const c = counters[num.abs] || (counters[num.abs]=[]);
+    if(!seenNums.has(numId)){
+      seenNums.add(numId);
+      for(const k in num.starts){ c[k]=num.starts[k]-1; for(let d=+k+1;d<9;d++) c[d]=undefined; }
+    }
+    c[ilvl] = c[ilvl]===undefined ? lvls[ilvl].start : c[ilvl]+1;
+    for(let d=ilvl+1;d<9;d++) c[d]=undefined;
+    if(lvls[ilvl].fmt==='bullet') return '•';
+    return lvls[ilvl].text.replace(/%(\d)/g, (_,d) => {
+      const L = lvls[d-1];
+      return L ? fmtNum(c[d-1]===undefined ? L.start : c[d-1], L.fmt) : '';
+    });
+  }
+
   const paragraphs = xmlDoc.getElementsByTagNameNS(W,'p');
   let y=1e6; const items=[];
   let hlFound=0;
   const Y_STEP=100; // must be > Y_TOL (8) so each paragraph stays its own line
 
   for(const para of paragraphs){
+    const lbl = numLabel(para); // before the empty-check: empty numbered paragraphs still count
     let text='', paraHl=false;
     const runs = para.getElementsByTagNameNS(W,'r');
     for(const run of runs){
@@ -398,6 +466,7 @@ async function extractDOCX(ab){
     }
     text = text.trim();
     if(!text) continue;
+    if(lbl) text = lbl+' '+text;
     if(paraHl) hlFound++;
     items.push({str:text,x:0,y:y,w:text.length*7,h:14,hl:paraHl});
     y -= Y_STEP;
@@ -417,14 +486,18 @@ function buildLines(pages){
     let groups=[],cur=null;
     for(const it of sorted){
       if(!cur||Math.abs(it.y-cur.baseY)>Y_TOL){ cur={baseY:it.y,parts:[]}; groups.push(cur); }
-      cur.parts.push({x:it.x,str:it.str,hl:it.hl});
+      cur.parts.push({x:it.x,w:it.w,h:it.h,str:it.str,hl:it.hl});
     }
     for(const g of groups){
       g.parts.sort((a,b)=>a.x-b.x);
-      let txt='',hl=false;
+      let txt='',hl=false,prevEnd=null;
       for(const p of g.parts){
-        if(txt&&!txt.endsWith(' ')&&!txt.endsWith('-')&&!p.str.startsWith(' ')) txt+=' ';
+        // Only add a space if there is a visible gap – PDFs often split words into
+        // several items ("Kl"+"inik", "RM"+"-"+"Test") without any gap between them
+        const gap=prevEnd===null?0:p.x-prevEnd;
+        if(txt&&!txt.endsWith(' ')&&!txt.endsWith('-')&&!p.str.startsWith(' ')&&gap>p.h*0.15) txt+=' ';
         txt+=p.str; if(p.hl) hl=true;
+        prevEnd=p.x+p.w;
       }
       txt=txt.trim();
       // Fix: use g.baseY (this group's Y), not groups[0] (first group on page)
@@ -503,7 +576,7 @@ const RE_Q_PLAIN=/^(.{6,}\?)\s*$/;   // unnumbered question ending with "?"
 function parseLines(lines){
   const qs=[]; let sec='Allgemein',curQ=null,curO=null,autoNum=0;
   for(const line of lines){
-    const t=line.text.replace(/\s+/g,' ').trim(); if(!t||t.length<2) continue;
+    const t=line.text.replace(/\s+/g,' ').trim(); if(!t||(t.length<2&&t!=='?')) continue;
     const sm=t.match(RE_SEC);
     if(sm&&t.length<sm[1].length+40&&!RE_Q.test(t)&&!RE_O.test(t)){
       sec=SMAP[sm[1]]||sm[1]; dbg('sec:',sec); continue;
@@ -515,9 +588,12 @@ function parseLines(lines){
       curQ={num:parseInt(qm[1]),text:qm[2].trim(),sec,opts:[],pageNum:line.pageNum,pdfY:line.pdfY};
       curO=null; continue;
     }
-    // Unnumbered question (e.g. "Welche Struktur wird hier gesucht?")
+    // Unnumbered question (e.g. "Welche Struktur wird hier gesucht?").
+    // Not while the current question is still unfinished (no options yet, no "?" yet) –
+    // then this line is just the last line of a multi-line question.
     const pqm=t.match(RE_Q_PLAIN);
-    if(pqm&&!RE_O.test(t)&&!RE_O_BULLET.test(t)&&!RE_O_DASH.test(t)){
+    const qOpen=curQ&&curQ.opts.length===0&&!/\?\s*$/.test(curQ.text);
+    if(pqm&&!qOpen&&!RE_O.test(t)&&!RE_O_BULLET.test(t)&&!RE_O_DASH.test(t)){
       if(curQ&&curQ.opts.length>0) qs.push(curQ);
       autoNum++;
       curQ={num:autoNum,text:pqm[1].trim(),sec,opts:[],pageNum:line.pageNum,pdfY:line.pdfY,unlabeled:true};
